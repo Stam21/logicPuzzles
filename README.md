@@ -1,2 +1,2 @@
 # logicPuzzles
-Using propositional logic to solve puzzles
+Using propositional logic in python to solve puzzles
