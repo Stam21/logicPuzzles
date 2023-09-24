@@ -1,5 +1,6 @@
 import itertools
 import random
+import copy
 
 
 class Minesweeper():
@@ -194,36 +195,53 @@ class MinesweeperAI():
                if they can be inferred from existing knowledge
         """
         self.moves_made.add(cell)
-        cells = set()
         self.mark_safe(cell)
+        cells = set()
+        
         for i in range(cell[0] - 1, cell[0] + 2):
             for j in range(cell[1] - 1, cell[1] + 2):
                 # Ignore the cell itself
                 if (i, j) == cell:
                     continue
                 # Add cells that are not determined
-                if (i,j) not in self.moves_made and (i,j) not in self.safes and (i,j) not in self.mines:
-                    cells.add((i,j))
-                elif (i,j) in self.mines:
-                    count-=1
+                if (0 <= i < self.height) \
+                    and (0 <= j < self.width):
+                    if (i,j) in self.mines:
+                        count-=1
+                        continue 
+                    if (i,j) not in self.safes or (i,j) not in self.moves_made:
+                        cells.add((i,j))
+                    
         
         self.knowledge.append(Sentence(cells,count))
         
         for k in self.knowledge:
-            safes  = k.known_safes().copy()
-            mines = k.known_mines().copy()
+            safes  = copy.deepcopy(k.known_safes())
+            mines = copy.deepcopy(k.known_mines())
             for s in safes:
                 self.mark_safe(s)
             for m in mines:
                 self.mark_mine(m)
             
 
-        
-        for knowledge1 in self.knowledge:
-            for knowledge2 in self.knowledge:
-                if knowledge1.cells in knowledge2.cells and knowledge1.cells != knowledge2.cells:
-                    self.knowledge.append(Sentence(knowledge2.cells-knowledge1.cells,knowledge2.count - knowledge1.count))
+        kb =copy.deepcopy(self.knowledge)
+        for i in kb:
+            for j in kb:
+                if i.cells == j.cells:
+                    continue
 
+                if j.cells.issubset(i.cells):
+                    new_cells = i.cells - j.cells
+                    new_count = i.count - j.count
+                    self.knowledge.append(Sentence(new_cells, new_count))
+        
+        unique_knowledge = []
+        for item in self.knowledge:
+            if item not in unique_knowledge:
+                unique_knowledge.append(item)
+        self.knowledge = unique_knowledge
+
+        
 
     def make_safe_move(self):
         """
@@ -234,10 +252,10 @@ class MinesweeperAI():
         This function may use the knowledge in self.mines, self.safes
         and self.moves_made, but should not modify any of those values.
         """
-        for i in range(8):
-            for j in range(8):
-                if (i,j) in self.safes and (i,j) not in self.mines and (i,j) not in self.moves_made:
-                    return (i,j)
+        for safe in self.safes:
+            if safe not in self.moves_made:
+                return safe
+        return None
 
     def make_random_move(self):
         """
@@ -246,11 +264,12 @@ class MinesweeperAI():
             1) have not already been chosen, and
             2) are not known to be mines
         """
-        if len(self.moves_made) >= 56:
+        if len(self.moves_made) >= self.height*self.width-8:
             return None
         else:
             while True:
                 rX = random.randint(0,self.width-1)
                 rY = random.randint(0,self.height-1)
+                print(rX,rY)
                 if (rX,rY) not in self.moves_made and (rX,rY) not in self.mines:
                         return (rX,rY)
